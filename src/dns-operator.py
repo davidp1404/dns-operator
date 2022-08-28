@@ -1,148 +1,73 @@
+from jinja2 import Environment, FileSystemLoader
+from kubernetes import client, config
+from kubernetes.client.rest import ApiException
+import datetime
+import os, time
 
-def genDNSDeployment(name,namespace,zoneList):
-    deploymentTemplate="""
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name:  {name}
-  namespace: {namespace}
-  labels:
-    managed-by: "dns-operator"
-spec:
-  selector:
-    matchLabels:
-      app: {name}
-  replicas: 2
-  strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 50%
-    type: RollingUpdate
-  template:
-    metadata:
-      labels:
-        managed-by: "dns-operator"
-        app: {name} 
-    spec:
-      containers:
-      - name:  main
-        image: k8s.gcr.io/coredns/coredns:v1.8.4
-        args:
-        - -dns.port
-        - "1053"
-        - -conf
-        - /etc/coredns/Corefile
-        env:
-        - name: TZ
-          value: "Europe/Madrid"
-        resources:
-          requests:
-            cpu: 250m
-            memory: 250Mi
-          limits:
-            cpu: 250m
-            memory: 250Mi
-        livenessProbe:
-          failureThreshold: 5
-          httpGet:
-            path: /health
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 5
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /ready
-            port: 8181
-            scheme: HTTP
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        ports:
-        - containerPort: 1053
-          name: dns
-          protocol: UDP
-        - containerPort: 1053
-          name: dns-tcp
-          protocol: TCP
-        - containerPort: 9153
-          name: metrics
-          protocol: TCP
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-        volumeMounts:
-        - mountPath: /etc/coredns
-          name: config-volume
-          readOnly: true
-      restartPolicy: Always
-      volumes:
-      - name: config-volume
-        configMap:
-          name: {name}
-          items:
-          - key: Corefile
-            path: Corefile
-"""
-    body=(deploymentTemplate.format(namespace=namespace,name=name))
-    for zone in zoneList:
-        body += f"          - key: db.{zone}\n            path: db.{zone}\n"
-    return(body)    
+def genDNSDeployment(name,namespace,zonelist):
+  file_path = os.path.dirname(os.path.realpath(__file__)) + "/templates"
+  environment = Environment(loader=FileSystemLoader(file_path))
+  template = environment.get_template("deployment.j2")
+  body = template.render(name=name,namespace=namespace,zonelist=zonelist)
+  return(body)    
 
-def genDNSConfigmap (name,namespace,zoneList):
-    configmapTemplate = """
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {name}
-data:
-  Corefile: |
-    .:1053 {{
-      root /etc/coredns
-      errors
-      health
-      ready
-      prometheus :9153
-      reload 2s 1s
-      log"""
-    corefileTemplate = """
-      file db.{zone} {zone} {{
-        reload 2s
-      }}"""
+def genDNSConfigmap (name,namespace,zonelist):
+  file_path = os.path.dirname(os.path.realpath(__file__)) + "/templates"
+  environment = Environment(loader=FileSystemLoader(file_path))
+  template = environment.get_template("confirmap.j2")
+  body = template.render(name=name,namespace=namespace,zonelist=zonelist)
+  return(body)
 
-    zoneDefTemplate = """
-  db.{zone}: |
-    $ORIGIN {zone}.
-    @   3600 IN SOA sns.dns.icann.org. noc.dns.icann.org. (
-            2017042761 ; serial
-            7200       ; refresh (2 hours)
-            3600       ; retry (1 hour)
-            1209600    ; expire (2 weeks)
-            3600       ; minimum (1 hour)
-            )
-        3600 IN NS a.iana-servers.net.
-        3600 IN NS b.iana-servers.net."""
-    body = configmapTemplate.format(name=name)
-    zonelistString = ""
-    for zone in zoneList:
-        body += corefileTemplate.format(zone=zone)
-        zonelistString += " db." + zone
-    body += """
-      auto {zonelistString} {{
-        reload 2s
-      }}
-    }}""".format(zonelistString=zonelistString)
+def rolloutDeployment (deployment,namespace,timeout=60):
+  # config.load_kube_config()  # for local environment
+  # #config.load_incluster_config()
+  now = datetime.datetime.utcnow()
+  now = str(now.isoformat("T") + "Z")
+  body = {
+      'spec': {
+          'template':{
+              'metadata': {
+                  'annotations': {
+                      'kubectl.kubernetes.io/restartedAt': now
+                  }
+              }
+          }
+      }
+  }
+  try:
+    v1_apps = client.AppsV1Api()
+    start = time.time()
+    v1_apps.patch_namespaced_deployment(deployment, namespace, body, pretty='true')
+    while time.time() - start < timeout:
+      time.sleep(2)
+      response = v1_apps.read_namespaced_deployment_status(deployment,namespace)
+      s = response.status
+      if (s.updated_replicas == response.spec.replicas and
+              s.replicas == response.spec.replicas and
+              s.available_replicas == response.spec.replicas and
+              s.observed_generation >= response.metadata.generation):
+          return True
+      else:
+          print(f'[updated_replicas:{s.updated_replicas},replicas:{s.replicas}, available_replicas:{s.available_replicas},observed_generation:{s.observed_generation}] waiting...')
+    raise RuntimeError(f'Waiting timeout for deployment {deployment}')
+  except ApiException as e:
+      print("Exception when calling AppsV1Api->read_namespaced_deployment_status: %s\n" % e)
 
-    for zone in zoneList:
-        body += zoneDefTemplate.format(zone=zone)
+def replaceConfigMap(name, namespace,zone):
+  # config.load_kube_config()  # for local environment
+  # #config.load_incluster_config()  A
+  try:
+    v1 = client.CoreV1Api()
+    currentZoneValue = v1.read_namespaced_config_map(namespace=namespace,name=name).data[zone]
+    #any('runner2  IN CNAME' in string for string in currentZoneValue)
 
-    return(body)
+  except ApiException as e:
+    print("Exception when calling replaceConfigMap: %s\n" % e)
 
+config.load_kube_config()  # for local environment
+#config.load_incluster_config()  A
 
-deployment = genDNSDeployment("dnsinstance01","default",["example.org", "0.0.10.in-addr.arpa"])
-configmap = genDNSConfigmap("dnsinstance01","default",["example.org", "0.0.10.in-addr.arpa"])
-
-print(deployment+"\n---\n"+configmap)
+# deployment = genDNSDeployment("dnsinstance01","default",["example.org", "0.0.10.in-addr.arpa"])
+# configmap = genDNSConfigmap("dnsinstance01","default",["example.org", "0.0.10.in-addr.arpa"])
+# print(deployment+"\n---\n"+configmap)
+rolloutDeployment ("dns-operator-dnsinstance01","default")
