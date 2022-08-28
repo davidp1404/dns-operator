@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dnsinstance-1
+  namespace: default
+spec:
+  selector:
+    app: dnsinstance-1
+  type: LoadBalancer
+  sessionAffinity: None
+  # sessionAffinityConfig:
+  #   clientIP:
+  #     timeoutSeconds: 10800
+  ports:
+  - name: dnstcp
+    protocol: TCP
+    port: 53
+    targetPort: 1053
+  - name: dnsudp
+    protocol: UDP
+    port: 53
+    targetPort: 1053
