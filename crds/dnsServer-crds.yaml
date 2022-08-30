@@ -1,0 +1,166 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: dnsservers.davidp1404.github.com
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: davidp1404.github.com
+  # list of versions supported by this CustomResourceDefinition
+  versions:
+    - name: v1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+              properties:
+                provider:
+                  type: string
+                  enum:
+                  - corednsFiles
+                  default: corednsFiles
+                zones:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                replicas:
+                  type: integer
+                  minimum: 2
+                  maximum: 5
+                  default: 2
+                nsRecords:
+                  type: array
+                  items:
+                    type: string
+                  default:
+                  - "3600 IN NS a.iana-servers.net."
+                  - "3600 IN NS b.iana-servers.net."
+              required:
+                - zones
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+      - name: Provider
+        type: string
+        description: Provider
+        jsonPath: .spec.provider
+      - name: Zones
+        type: string
+        description: Zones
+        jsonPath: .spec.zones
+      - name: Replicas
+        type: string
+        description: Replicas
+        jsonPath: .spec.replicas
+      - name: Age
+        type: date
+        jsonPath: .metadata.creationTimestamp 
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: dnsservers
+    # singular name to be used as an alias on the CLI and for display
+    singular: dnsserver
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: dnsServer
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - dnss
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: dnsrecords.davidp1404.github.com
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: davidp1404.github.com
+  # list of versions supported by this CustomResourceDefinition
+  versions:
+    - name: v1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+              properties:
+                recordType:
+                  type: string
+                  enum:
+                  - A
+                  - PTR
+                  - CNAME
+                zone:
+                  type: string
+                recordKey:
+                  type: string
+                recordValue:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                ttl:
+                  type: integer
+                  minimum: 5
+                  maximum: 3600
+                  default: 5
+              required:
+                - recordType
+                - recordKey
+                - zone
+                - recordValue
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+      - name: Zone
+        type: string
+        description: Zone
+        jsonPath: .spec.zone
+      - name: Key
+        type: string
+        description: Record key
+        jsonPath: .spec.recordKey
+      - name: Type
+        type: string
+        description: Record type
+        jsonPath: .spec.recordType  
+      - name: Value
+        type: string
+        description: Record value
+        jsonPath: .spec.recordValue
+      - name: TTL
+        type: integer
+        description: TTL
+        jsonPath: .spec.ttl
+      - name: Age
+        type: date
+        jsonPath: .metadata.creationTimestamp 
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: dnsrecords
+    # singular name to be used as an alias on the CLI and for display
+    singular: dnsrecord
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: dnsRecord
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - dnsr

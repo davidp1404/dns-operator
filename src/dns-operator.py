@@ -14,7 +14,7 @@ def genDNSDeployment(name,namespace,zonelist):
 def genDNSConfigmap (name,namespace,zonelist):
   file_path = os.path.dirname(os.path.realpath(__file__)) + "/templates"
   environment = Environment(loader=FileSystemLoader(file_path))
-  template = environment.get_template("confirmap.j2")
+  template = environment.get_template("configmap.j2")
   body = template.render(name=name,namespace=namespace,zonelist=zonelist)
   return(body)
 
