@@ -1,5 +1,5 @@
 # dns-operator
-Kubernetes DNS operator based on coredns and developed with python3 using kubernetes and kopf libraries
+Kubernetes DNS operator based on coredns and developed with python3 using [kubernetes](https://github.com/kubernetes-client/python) and [kopf](https://kopf.readthedocs.io/en/stable/) libraries
 ## What it does?
 Extend kubernetes api with new CRDs to allow you:
 1) Manage DNS instances (create/delete):
@@ -75,4 +75,13 @@ record1   sample.org            record1   A      ["10.0.0.2"]              5    
 record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5     19s
 
 ```
+## Status:
+Maturity: Beta   
+Limitations:
+- [ ] You can't change a DNS instance, only create or delete
+
+## Pending:
+- [x] Operator with multiple replicas 
+- [ ] Improving QA tests (pytest)
+- [ ] Package with helm
 
