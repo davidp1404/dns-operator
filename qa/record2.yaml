@@ -1,0 +1,11 @@
+---
+apiVersion: davidp1404.github.com/v1
+kind: dnsRecord
+metadata:
+  name: record2
+spec:
+  dnsServerRef: sample.org
+  recordType: A
+  zone: sample.org
+  recordKey: "record2"
+  recordValue: ["10.0.0.1","10.0.0.3"]

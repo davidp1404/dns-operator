@@ -120,11 +120,14 @@ spec:
                   minimum: 5
                   maximum: 3600
                   default: 5
+                dnsServerRef:
+                  type: string
               required:
                 - recordType
                 - recordKey
                 - zone
                 - recordValue
+                - dnsServerRef
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true
