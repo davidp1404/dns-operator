@@ -76,13 +76,14 @@ record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5    
 
 ```
 ## Status:
-Maturity: Beta   
+Maturity: early beta   
 Limitations:
 - [ ] You can't change a DNS instance, only create or delete
 
 ## Pending:
 - [x] Operator with multiple replicas 
+- [ ] Reload all present records after recreating a dns instance
 - [ ] Makefile to create docker images and install
 - [ ] Improving QA tests (pytest)
-- [ ] Package with helm
+- [ ] Package with helm and kustomize
 
