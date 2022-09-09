@@ -1,2 +1,78 @@
 # dns-operator
-DNS operator based on coredns
+Kubernetes DNS operator based on coredns and developed with python3 using kubernetes and kopf libraries
+## What it does?
+Extend kubernetes api with new CRDs to allow you:
+1) Manage DNS instances (create/delete):
+```
+$ cat qa/server-sample.yaml 
+---
+apiVersion: davidp1404.github.com/v1
+kind: dnsServer
+metadata:
+  name: sample.org
+  namespace: default
+spec:
+  zones: 
+  - sample.org
+  - 0.0.10.in-addr.arpa
+  replicas: 2
+
+$ kubectl create -f qa/server-sample.yaml
+dnsserver.davidp1404.github.com/sample.org created
+
+$ kubectl get cm,deployment,svc -l app.kubernetes.io/managed-by="dns-operator"
+NAME                                DATA   AGE
+configmap/dns-operator-sample-org   3      137m
+
+NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/dns-operator-sample-org   2/2     2            2           137m
+
+NAME                                  TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)        AGE
+service/dns-operator-tcp-sample-org   LoadBalancer   10.96.118.22   172.18.255.201   53:30366/TCP   137m
+service/dns-operator-udp-sample-org   LoadBalancer   10.96.72.49    172.18.255.201   53:30833/UDP   137m
+
+$ k get dnss
+NAME         PROVIDER       ZONES                                  REPLICAS   AGE
+sample.org   corednsFiles   ["sample.org","0.0.10.in-addr.arpa"]   2          141m
+
+```
+2) Manage DNS records (create/delete/update):
+
+```
+$ cat qa/record{1,3}.yaml 
+---
+apiVersion: davidp1404.github.com/v1
+kind: dnsRecord
+metadata:
+  name: record1
+  namespace: default
+spec:
+  dnsServerRef: sample.org
+  recordType: A
+  zone: sample.org
+  recordKey: "record1"
+  recordValue: ["10.0.0.2"]
+---
+apiVersion: davidp1404.github.com/v1
+kind: dnsRecord
+metadata:
+  name: record3
+  namespace: default
+spec:
+  dnsServerRef: sample.org
+  recordType: PTR
+  zone: 0.0.10.in-addr.arpa
+  recordKey: "3"
+  recordValue: ["record3.sample.org."]
+  
+$ cat qa/record{1,3}.yaml | kubectl create -f -
+dnsrecord.davidp1404.github.com/record1 created
+dnsrecord.davidp1404.github.com/record3 created
+
+$ k get dnsr
+NAME      ZONE                  KEY       TYPE   VALUE                     TTL   AGE
+record1   sample.org            record1   A      ["10.0.0.2"]              5     19s
+record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5     19s
+
+```
+
