@@ -42,7 +42,7 @@ def genDNSUDPService(name,namespace,lbtype):
   return(yaml.safe_load(body))
 
 
-def rolloutDeployment (deployment,namespace,timeout,logger):
+async def rolloutDeployment (deployment,namespace,timeout,logger):
   now = datetime.datetime.utcnow()
   now = str(now.isoformat("T") + "Z")
   body = {
@@ -61,7 +61,8 @@ def rolloutDeployment (deployment,namespace,timeout,logger):
     start = time.time()
     v1_apps.patch_namespaced_deployment(deployment, namespace, body, pretty='true')
     while time.time() - start < timeout:
-      time.sleep(2)
+      #time.sleep(2)
+      await asyncio.sleep(2.0)
       response = v1_apps.read_namespaced_deployment_status(deployment,namespace)
       s = response.status
       if (s.updated_replicas == response.spec.replicas and
@@ -81,13 +82,12 @@ def rolloutDeployment (deployment,namespace,timeout,logger):
 
 #https://kopf.readthedocs.io/en/stable/peering/?highlight=wait#multi-pod-operators
 @kopf.on.startup()
-async def configure(settings: kopf.OperatorSettings, **_):
+def configure(settings: kopf.OperatorSettings, **_):
     settings.peering.priority = random.randint(0, 32767) 
     settings.peering.stealth = True
-    await asyncio.sleep(2)
 
 @kopf.on.create('dnsservers')
-def create_dnsservers(spec, name, namespace, logger, **kwargs):
+async def create_dnsservers(spec, name, namespace, logger, **kwargs):
   deployment = genDNSDeployment(name,namespace,spec.get('zones'),spec.get('replicas'))
   configmap = genDNSConfigmap(name,namespace,spec.get('zones'))
   service_tcp = genDNSTCPService(name,namespace,'LoadBalancer')
@@ -104,6 +104,7 @@ def create_dnsservers(spec, name, namespace, logger, **kwargs):
     v1_core.create_namespaced_config_map(namespace,configmap,pretty='true')
     v1_core.create_namespaced_service(namespace,service_tcp,pretty='true')
     v1_core.create_namespaced_service(namespace,service_udp,pretty='true')
+    await asyncio.sleep(1.0)
   except ApiException as e:
       e=str(e).replace('\n','\\n')
       error_msg=f'{{"error": {e}}}'
@@ -112,7 +113,7 @@ def create_dnsservers(spec, name, namespace, logger, **kwargs):
 
 
 @kopf.on.create('dnsrecords')
-def create_dnsrecords(spec, name, namespace, logger, **kwargs):
+async def create_dnsrecords(spec, name, namespace, logger, **kwargs):
   try:
     # Get some contextual data
     zone=spec.get('zone')
@@ -137,7 +138,7 @@ def create_dnsrecords(spec, name, namespace, logger, **kwargs):
     newZoneValue = newZoneValue.replace('\n','\\n')
     patch_body=yaml.safe_load(f'[{{ "op": "replace", "path": "/data/db.{zone}", "value": "{newZoneValue}"}}]')
     v1_core.patch_namespaced_config_map(configMapName,namespace,patch_body,pretty='true')
-    rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
+    await rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
     now = datetime.datetime.utcnow()
     return json.dumps({'last_event': now},default=str)
   except ApiException as e:
@@ -154,7 +155,7 @@ def update_dnsrecords(spec, old, new, name, namespace, logger, diff, **_):
   return json.dumps({'last_event': now},default=str)
 
 @kopf.on.delete('dnsrecords')
-def delete_dnsrecords(spec, name, namespace, logger, **kwargs):
+async def delete_dnsrecords(spec, name, namespace, logger, **kwargs):
   try:
     # Get some contextual data
     zone=spec.get('zone')
@@ -169,12 +170,12 @@ def delete_dnsrecords(spec, name, namespace, logger, **kwargs):
     currentZoneValue = currentConfigMap.data[zoneName]
     # Verify record exit
     if currentZoneValue.find(f'{recordKey} IN {recordType}'):
-      logger.info(f'Record "{recordKey} IN {recordType}" exists, removing it')
+      logger.info(f'Deleting record "{recordKey} IN {recordType}"')
       newZoneValue=re.sub(f'{recordKey} IN {recordType} .*(?:\n|$)','',currentZoneValue)
       newZoneValue = newZoneValue.replace('\n','\\n')
       patch_body=yaml.safe_load(f'[{{ "op": "replace", "path": "/data/db.{zone}", "value": "{newZoneValue}"}}]')
       v1_core.patch_namespaced_config_map(configMapName,namespace,patch_body,pretty='true')
-      rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
+      await rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
     else:
       logger.warning(f'Record "{recordKey} IN {recordType}" does not exists, ignoring delete')
     now = datetime.datetime.utcnow()
