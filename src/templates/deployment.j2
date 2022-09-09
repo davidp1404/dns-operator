@@ -11,7 +11,7 @@ spec:
     matchLabels:
       app: dns-operator-{{name}}
   revisionHistoryLimit: 10
-  replicas: 2
+  replicas: {{replicas}}
   strategy:
     rollingUpdate:
       maxSurge: 1

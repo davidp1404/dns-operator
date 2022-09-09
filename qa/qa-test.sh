@@ -1,5 +1,5 @@
 #!/bin/bash
-for file in {1..5}
+for file in {1..6}
 do
     kubectl create -f record$file.yaml
     sleep 0.2

@@ -8,15 +8,16 @@ import json
 import os, time
 import re
 import random
+import asyncio
 
 def getRecordName(name):
   return f'dns-operator-{name}'.replace('.','-')
 
-def genDNSDeployment(name,namespace,zonelist):
+def genDNSDeployment(name,namespace,zonelist,replicas):
   file_path = os.path.dirname(os.path.realpath(__file__)) + "/templates"
   environment = Environment(loader=FileSystemLoader(file_path))
   template = environment.get_template("deployment.j2")
-  body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist)
+  body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist,replicas=replicas)
   return(yaml.safe_load(body))    
 
 def genDNSConfigmap(name,namespace,zonelist):
@@ -80,13 +81,14 @@ def rolloutDeployment (deployment,namespace,timeout,logger):
 
 #https://kopf.readthedocs.io/en/stable/peering/?highlight=wait#multi-pod-operators
 @kopf.on.startup()
-def configure(settings: kopf.OperatorSettings, **_):
+async def configure(settings: kopf.OperatorSettings, **_):
     settings.peering.priority = random.randint(0, 32767) 
     settings.peering.stealth = True
+    await asyncio.sleep(2)
 
 @kopf.on.create('dnsservers')
 def create_dnsservers(spec, name, namespace, logger, **kwargs):
-  deployment = genDNSDeployment(name,namespace,spec.get('zones'))
+  deployment = genDNSDeployment(name,namespace,spec.get('zones'),spec.get('replicas'))
   configmap = genDNSConfigmap(name,namespace,spec.get('zones'))
   service_tcp = genDNSTCPService(name,namespace,'LoadBalancer')
   service_udp = genDNSUDPService(name,namespace,'LoadBalancer')
