@@ -113,7 +113,7 @@ async def create_dnsservers(spec, name, namespace, logger, **kwargs):
 
 
 @kopf.on.create('dnsrecords')
-async def create_dnsrecords(spec, name, namespace, logger, **kwargs):
+async def create_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, **kwargs):
   try:
     # Get some contextual data
     zone=spec.get('zone')
@@ -127,6 +127,7 @@ async def create_dnsrecords(spec, name, namespace, logger, **kwargs):
     currentConfigMap = v1_core.read_namespaced_config_map(namespace=namespace,name=configMapName)
     currentZoneValue = currentConfigMap.data[zoneName]
     # Verify record doesn't exit
+    # if not re.search(f'{recordKey} (.*) IN {recordType} (.*)',data):
     if currentZoneValue.find(f'{recordKey} IN {recordType}') > 0:
       logger.warning(f'Record "{recordKey} IN {recordType}" already exists, removing it before procesing')
       currentZoneValue=re.sub(f'{recordKey} IN {recordType} .*(?:\n|$)','',currentZoneValue)
@@ -138,7 +139,8 @@ async def create_dnsrecords(spec, name, namespace, logger, **kwargs):
     newZoneValue = newZoneValue.replace('\n','\\n')
     patch_body=yaml.safe_load(f'[{{ "op": "replace", "path": "/data/db.{zone}", "value": "{newZoneValue}"}}]')
     v1_core.patch_namespaced_config_map(configMapName,namespace,patch_body,pretty='true')
-    await rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
+    if not bypass_rollout:
+        await rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
     now = datetime.datetime.utcnow()
     return json.dumps({'last_event': now},default=str)
   except ApiException as e:
@@ -149,13 +151,13 @@ async def create_dnsrecords(spec, name, namespace, logger, **kwargs):
 @kopf.on.update('dnsrecords')
 async def update_dnsrecords(spec, old, new, name, namespace, logger, diff, **_):
   # Delete and create it
-  await delete_dnsrecords(old.get('spec'),name,namespace,logger)
+  await delete_dnsrecords(old.get('spec'),name,namespace,logger,bypass_rollout=True)
   await create_dnsrecords(new.get('spec'),name,namespace,logger)
   now = datetime.datetime.utcnow()
   return json.dumps({'last_event': now},default=str)
 
 @kopf.on.delete('dnsrecords')
-async def delete_dnsrecords(spec, name, namespace, logger, **kwargs):
+async def delete_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, **kwargs):
   try:
     # Get some contextual data
     zone=spec.get('zone')
@@ -175,7 +177,8 @@ async def delete_dnsrecords(spec, name, namespace, logger, **kwargs):
       newZoneValue = newZoneValue.replace('\n','\\n')
       patch_body=yaml.safe_load(f'[{{ "op": "replace", "path": "/data/db.{zone}", "value": "{newZoneValue}"}}]')
       v1_core.patch_namespaced_config_map(configMapName,namespace,patch_body,pretty='true')
-      await rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
+      if not bypass_rollout:
+        await rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)
     else:
       logger.warning(f'Record "{recordKey} IN {recordType}" does not exists, ignoring delete')
     now = datetime.datetime.utcnow()
