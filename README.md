@@ -82,6 +82,7 @@ Limitations:
 
 ## Pending:
 - [x] Operator with multiple replicas 
+- [ ] Makefile to create docker images and install
 - [ ] Improving QA tests (pytest)
 - [ ] Package with helm
 
