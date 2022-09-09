@@ -2,60 +2,70 @@
 apiVersion: davidp1404.github.com/v1
 kind: dnsRecord
 metadata:
-  name: foo.sample.org
+  name: record1
   namespace: default
 spec:
   dnsServerRef: sample.org
   recordType: A
   zone: sample.org
-  recordKey: "foo"
+  recordKey: "record1"
   recordValue: ["10.0.0.2"]
 ---
 apiVersion: davidp1404.github.com/v1
 kind: dnsRecord
 metadata:
-  name: bar.sample.org
-  namespace: default
+  name: record2
 spec:
   dnsServerRef: sample.org
   recordType: A
   zone: sample.org
-  recordKey: "bar"
+  recordKey: "record2"
   recordValue: ["10.0.0.1","10.0.0.3"]
 ---
 apiVersion: davidp1404.github.com/v1
 kind: dnsRecord
 metadata:
-  name: foo-inv.sample.org
-  namespace: default
-spec:
-  dnsServerRef: sample.org
-  recordType: PTR
-  zone: 0.0.10.in-addr.arpa
-  recordKey: "2"
-  recordValue: ["foo.sample.org."]
----
-apiVersion: davidp1404.github.com/v1
-kind: dnsRecord
-metadata:
-  name: bar-inv1.sample.org
-  namespace: default
-spec:
-  dnsServerRef: sample.org
-  recordType: PTR
-  zone: 0.0.10.in-addr.arpa
-  recordKey: "1"
-  recordValue: ["bar.sample.org."]
----
-apiVersion: davidp1404.github.com/v1
-kind: dnsRecord
-metadata:
-  name: bar-inv3.sample.org
+  name: record3
   namespace: default
 spec:
   dnsServerRef: sample.org
   recordType: PTR
   zone: 0.0.10.in-addr.arpa
   recordKey: "3"
-  recordValue: ["bar.sample.org."]
+  recordValue: ["record3.sample.org."]
 ---
+apiVersion: davidp1404.github.com/v1
+kind: dnsRecord
+metadata:
+  name: record4
+  namespace: default
+spec:
+  dnsServerRef: sample.org
+  recordType: PTR
+  zone: 0.0.10.in-addr.arpa
+  recordKey: "4"
+  recordValue: ["record4.sample.org."]
+---
+apiVersion: davidp1404.github.com/v1
+kind: dnsRecord
+metadata:
+  name: record5
+  namespace: default
+spec:
+  dnsServerRef: sample.org
+  recordType: PTR
+  zone: 0.0.10.in-addr.arpa
+  recordKey: "5"
+  recordValue: ["record5.sample.org."]
+---
+apiVersion: davidp1404.github.com/v1
+kind: dnsRecord
+metadata:
+  name: record6
+  namespace: default
+spec:
+  dnsServerRef: sample.org
+  recordType: CNAME
+  zone: sample.org
+  recordKey: "record6"
+  recordValue: ["record1.sample.org."]

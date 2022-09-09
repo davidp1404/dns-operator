@@ -147,10 +147,10 @@ async def create_dnsrecords(spec, name, namespace, logger, **kwargs):
     logger.error("Exception when calling create_dnsrecords: %s\n" % error_msg)
 
 @kopf.on.update('dnsrecords')
-def update_dnsrecords(spec, old, new, name, namespace, logger, diff, **_):
+async def update_dnsrecords(spec, old, new, name, namespace, logger, diff, **_):
   # Delete and create it
-  delete_dnsrecords(old.get('spec'),name,namespace,logger)
-  create_dnsrecords(new.get('spec'),name,namespace,logger)
+  await delete_dnsrecords(old.get('spec'),name,namespace,logger)
+  await create_dnsrecords(new.get('spec'),name,namespace,logger)
   now = datetime.datetime.utcnow()
   return json.dumps({'last_event': now},default=str)
 
