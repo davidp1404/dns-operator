@@ -6,6 +6,8 @@ metadata:
   labels:
     app: dns-operator-{{name}}
     app.kubernetes.io/managed-by: "dns-operator"
+  annotations:
+    metallb.universe.tf/allow-shared-ip: dns-operator-{{name}}
 spec:
   selector:
     app: dns-operator-{{name}}

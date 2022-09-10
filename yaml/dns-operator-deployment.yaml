@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-operator
+spec:
+  replicas: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dns-operator
+  template:
+    metadata:
+      labels:
+        app: dns-operator
+    spec:
+      serviceAccountName: dns-operator-sa
+      containers:
+      - name: main
+        image: davidp1404/dns-operator
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 250m
+            memory: 250Mi
+          limits:
+            cpu: 250m
+            memory: 250Mi
+        volumeMounts:
+        - name: app
+          mountPath: /app/dns-operator.py
+          subPath: dns-operator.py
+        - name: templates
+          mountPath: /app/templates
+      volumes:
+      - name: app
+        configMap:
+          name: dns-operator-app
+      - name: templates
+        configMap:
+          name: dns-operator-templates

@@ -9,9 +9,7 @@ import os, time
 import re
 import random
 import asyncio
-
-def getRecordName(name):
-  return f'dns-operator-{name}'.replace('.','-')
+import logging
 
 def genDNSDeployment(name,namespace,zonelist,replicas):
   file_path = os.path.dirname(os.path.realpath(__file__)) + "/templates"
@@ -85,6 +83,8 @@ async def rolloutDeployment (deployment,namespace,timeout,logger):
 def configure(settings: kopf.OperatorSettings, **_):
     settings.peering.priority = random.randint(0, 32767) 
     settings.peering.stealth = True
+    settings.peering.standalone = False
+    settings.posting.level = logging.ERROR
 
 @kopf.on.create('dnsservers')
 async def create_dnsservers(spec, name, namespace, logger, **kwargs):
@@ -188,5 +188,5 @@ async def delete_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, 
     error_msg=f'{{"error": {e}}}'
     logger.error("Exception when calling replaceConfigMap: %s\n" % error_msg)
 
-config.load_kube_config()  # for local environment
-#config.load_incluster_config()  A
+#config.load_kube_config()  # for local environment
+#config.load_incluster_config()  
