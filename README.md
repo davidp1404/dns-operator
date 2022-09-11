@@ -84,7 +84,7 @@ $ make install-crd
 $ make install-operator
 $ make install-qasamples
 ```
-By defatul the services were tuned for metal-lb, but you can adapt them to your specific use case editing the configmap with the templates 
+By defatul the services were tuned for metal-lb, but you can adapt them to your specific use case editing the configmap with the jinja2 templates. 
 ```
 $ kubectl -n dns-operator get cm dns-operator-templates -o json | jq -r '.data."service-tcp.j2"'
 apiVersion: v1
