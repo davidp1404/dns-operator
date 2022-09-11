@@ -74,8 +74,68 @@ $ k get dnsr
 NAME      ZONE                  KEY       TYPE   VALUE                     TTL   AGE
 record1   sample.org            record1   A      ["10.0.0.2"]              5     19s
 record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5     19s
-
 ```
+## Installation:
+```
+$ git clone --depth 1 --branch v1.0 https://github.com/davidp1404/dns-operator.git
+$ cd dns-operator
+# Ensure your kubeconfig/context grants you the privileges needed to create crds, clusterroles, clusterrolebindings, serviceaccounts, configmaps, deployments
+$ make install-crd
+$ make install-operator
+$ make install-qasamples
+```
+By defatul the services were tuned for metal-lb, but you can adapt them to your specific use case editing the configmap with the templates 
+```
+$ kubectl -n dns-operator get cm dns-operator-templates -o json | jq -r '.data."service-tcp.j2"'
+apiVersion: v1
+kind: Service
+metadata:
+  name: dns-operator-tcp-{{name}}
+  namespace: {{namespace}}
+  labels:
+    app: dns-operator-{{name}}
+    app.kubernetes.io/managed-by: "dns-operator"
+  annotations:
+    metallb.universe.tf/allow-shared-ip: dns-operator-{{name}}
+spec:
+  selector:
+    app: dns-operator-{{name}}
+  type: {{lbtype}}
+  sessionAffinity: None
+  ports:
+  - name: dnstcp
+    protocol: TCP
+    port: 53
+    targetPort: 1053
+$ kubectl -n dns-operator get cm dns-operator-templates -o json | jq -r '.data."service-udp.j2"'
+apiVersion: v1
+kind: Service
+metadata:
+  name: dns-operator-udp-{{name}}
+  namespace: {{namespace}}
+  labels:
+    app: dns-operator-{{name}}
+    app.kubernetes.io/managed-by: "dns-operator"
+  annotations:
+    metallb.universe.tf/allow-shared-ip: dns-operator-{{name}}
+spec:
+  selector:
+    app: dns-operator-{{name}}
+  type: {{lbtype}}
+  sessionAffinity: None
+  ports:
+  - name: dnstcp
+    protocol: UDP
+    port: 53
+    targetPort: 1053
+```
+## Uninstallation
+```
+$ make uninstall-crd
+$ make uninstall-operator
+$ make uninstall-qasamples
+```
+
 ## Status:
 Maturity: early beta   
 Limitations:
