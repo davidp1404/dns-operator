@@ -80,12 +80,15 @@ record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5    
 Maturity: early beta   
 Limitations:
 - [ ] You can't change a DNS instance, only create or delete
+- [ ] Develop an admission controller to disable updated verbs in dsnServers crds
 
 ## Pending:
 - [x] Operator with multiple replicas 
+- [x] Package with kustomize
+- [ ] Enable managing of optional forward directives (currently only resolve for authoritative zones)
 - [ ] Reload all present records after recreating a dns instance
 - [ ] Makefile to create docker images and install
 - [ ] Improving QA tests (pytest)
-- [ ] Package with helm and kustomize
+- [ ] Package with helm
 - [ ] Add support to manage cloud dns services (route53/AWS, Azure DNS, Google Cloud DNS)
 
