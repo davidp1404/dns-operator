@@ -83,12 +83,13 @@ Limitations:
 - [ ] Develop an admission controller to disable updated verbs in dsnServers crds
 
 ## Pending:
+- [x] Makefile to create docker images and install
 - [x] Operator with multiple replicas 
 - [x] Package with kustomize
 - [ ] Enable managing of optional forward directives (currently only resolve for authoritative zones)
 - [ ] Reload all present records after recreating a dns instance
-- [ ] Makefile to create docker images and install
 - [ ] Improving QA tests (pytest)
 - [ ] Package with helm
+- [ ] Refactor with python classes to encapsulate multiple backend providers.
 - [ ] Add support to manage cloud dns services (route53/AWS, Azure DNS, Google Cloud DNS)
 
