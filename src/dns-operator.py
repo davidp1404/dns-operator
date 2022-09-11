@@ -84,7 +84,7 @@ def configure(settings: kopf.OperatorSettings, **_):
     settings.peering.priority = random.randint(0, 32767) 
     settings.peering.stealth = True
     settings.peering.standalone = False
-    settings.posting.level = logging.ERROR
+    settings.posting.level = logging.INFO
 
 @kopf.on.create('dnsservers')
 async def create_dnsservers(spec, name, namespace, logger, **kwargs):

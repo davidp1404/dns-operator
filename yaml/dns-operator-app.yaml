@@ -39,7 +39,7 @@ data:
     % error_msg)\n\n#https://kopf.readthedocs.io/en/stable/peering/?highlight=wait#multi-pod-operators\n@kopf.on.startup()\ndef
     configure(settings: kopf.OperatorSettings, **_):\n    settings.peering.priority
     = random.randint(0, 32767) \n    settings.peering.stealth = True\n    settings.peering.standalone
-    = False\n    settings.posting.level = logging.ERROR\n\n@kopf.on.create('dnsservers')\nasync
+    = False\n    settings.posting.level = logging.INFO\n\n@kopf.on.create('dnsservers')\nasync
     def create_dnsservers(spec, name, namespace, logger, **kwargs):\n  deployment
     = genDNSDeployment(name,namespace,spec.get('zones'),spec.get('replicas'))\n  configmap
     = genDNSConfigmap(name,namespace,spec.get('zones'))\n  service_tcp = genDNSTCPService(name,namespace,'LoadBalancer')\n

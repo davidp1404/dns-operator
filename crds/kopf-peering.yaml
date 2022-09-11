@@ -45,14 +45,13 @@ spec:
               type: object
               x-kubernetes-preserve-unknown-fields: true
 ---
-# Only one of these is needed
-# apiVersion: kopf.dev/v1
-# kind: ClusterKopfPeering
-# metadata:
-#   name: default
----
 apiVersion: kopf.dev/v1
-kind: KopfPeering
+kind: ClusterKopfPeering
 metadata:
-  namespace: dns-operator
   name: default
+---
+# apiVersion: kopf.dev/v1
+# kind: KopfPeering
+# metadata:
+#   namespace: dns-operator
+#   name: default
