@@ -79,7 +79,10 @@ record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5    
 ```
 $ git clone --depth 1 --branch v1.0 https://github.com/davidp1404/dns-operator.git
 $ cd dns-operator
+# Tune the docker-image defintion in the Makefile to reflect your scenario
+# Modify yaml/dns-operator-deployment.yaml file with the image url/tag choosen 
 # Ensure your kubeconfig/context grants you the privileges needed to create crds, clusterroles, clusterrolebindings, serviceaccounts, configmaps, deployments
+$ make docker-image
 $ make install-crd
 $ make install-operator
 $ make install-qasamples
