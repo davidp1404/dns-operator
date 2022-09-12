@@ -68,9 +68,9 @@ spec:
           name: metrics
           protocol: TCP
         securityContext:
+          runAsUser: 1000
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
-          runAsUser: 1000
         volumeMounts:
         - mountPath: /etc/coredns
           name: config-volume
