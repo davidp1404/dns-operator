@@ -1,7 +1,7 @@
 FROM python:3.7-alpine
 RUN mkdir -p /app/templates &&\
     addgroup -S dns-operator &&\
-    adduser -S dns-operator -G dns-operator -h /app &&\
+    adduser dns-operator -S -u 1000  -G dns-operator -h /app &&\
     chown -R dns-operator:dns-operator /app
 COPY requirements.txt /app
 WORKDIR /app
