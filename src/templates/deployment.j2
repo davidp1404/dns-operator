@@ -70,6 +70,7 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          runAsUser: 1000
         volumeMounts:
         - mountPath: /etc/coredns
           name: config-volume
