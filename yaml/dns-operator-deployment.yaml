@@ -19,6 +19,8 @@ spec:
       - name: main
         image: davidp1404/dns-operator
         imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 1000 
         resources:
           requests:
             cpu: 250m
