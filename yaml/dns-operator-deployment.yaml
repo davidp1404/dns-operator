@@ -15,6 +15,7 @@ spec:
         app: dns-operator
     spec:
       serviceAccountName: dns-operator-sa
+      terminationGracePeriodSeconds: 5
       containers:
       - name: main
         image: davidp1404/dns-operator
@@ -32,12 +33,15 @@ spec:
         - name: app
           mountPath: /app/dns-operator.py
           subPath: dns-operator.py
+        - name: app
+          mountPath: /app/filednsoperator.py
+          subPath: filednsoperator.py
         - name: templates
           mountPath: /app/templates
       volumes:
       - name: app
         configMap:
-          name: dns-operator-app
+          name: dns-operator-app     
       - name: templates
         configMap:
           name: dns-operator-templates

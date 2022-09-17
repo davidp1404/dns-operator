@@ -8,7 +8,8 @@ yaml-stanzas:
 	mkdir -p yaml
 	kubectl create ns ${NAMESPACE} --dry-run=client -o yaml > yaml/namespace.yaml
 	kubectl -n ${NAMESPACE} create sa dns-operator-sa --dry-run=client -o yaml > yaml/dns-operator-sa.yaml
-	kubectl create cm dns-operator-app --from-file=dns-operator.py=src/dns-operator.py --dry-run=client -o yaml > yaml/dns-operator-app.yaml
+	kubectl create cm dns-operator-app --from-file=dns-operator.py=src/dns-operator.py \
+	--from-file=filednsoperator.py=src/filednsoperator.py --dry-run=client -o yaml > yaml/dns-operator-app.yaml
 	kubectl create cm dns-operator-templates --from-file=src/templates --dry-run=client -o yaml > yaml/dns-operator-templates.yaml
 
 install-crds:

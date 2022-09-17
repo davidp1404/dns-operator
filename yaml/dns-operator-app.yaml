@@ -1,9 +1,35 @@
 apiVersion: v1
 data:
-  dns-operator.py: "from jinja2 import Environment, FileSystemLoader\nfrom kubernetes
+  dns-operator.py: "import kopf, logging, random\nimport asyncio\n# import yaml\n#
+    import json\n# import os, time\n# import re\n# from jinja2 import Environment,
+    FileSystemLoader\nfrom kubernetes import client, config\nfrom kubernetes.client.rest
+    import ApiException\n# import datetime\n\n\nimport filednsoperator as filednsoperator\n\ndef
+    get_provider(namespace,dnsname):\n  v1 = client.CustomObjectsApi()\n  try:\n    instance
+    = v1.get_namespaced_custom_object(group=\"davidp1404.github.com\", version=\"v1\",
+    plural=\"dnsservers\",namespace=namespace,name=dnsname)\n    return instance['spec']['provider']\n
+    \ except ApiException as e:\n    return \"\"\n\n#https://kopf.readthedocs.io/en/stable/peering/?highlight=wait#multi-pod-operators\n@kopf.on.startup()\ndef
+    configure(settings: kopf.OperatorSettings, **_):\n    settings.peering.priority
+    = random.randint(0, 32767) \n    settings.peering.stealth = True\n    settings.peering.standalone
+    = False\n    settings.posting.level = logging.INFO\n\n@kopf.on.create('dnsservers')\nasync
+    def create_dnsservers(spec, name, namespace, logger, **kwargs):\n  if spec.get('provider')
+    == \"corednsFiles\":\n    return(await filednsoperator.create_dnsservers(spec,
+    name, namespace, logger, **kwargs))\n\n@kopf.on.create('dnsrecords')\nasync def
+    create_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, **kwargs):\n
+    \ provider = get_provider(namespace,spec.get('dnsServerRef'))\n  if provider ==
+    \"corednsFiles\":\n    return(await filednsoperator.create_dnsrecords(spec, name,
+    namespace, logger,bypass_rollout=False, **kwargs))\n\n@kopf.on.update('dnsrecords')\nasync
+    def update_dnsrecords(spec, old, new, name, namespace, logger, diff, **_):\n  provider
+    = get_provider(namespace,spec.get('dnsServerRef'))\n  if provider == \"corednsFiles\":\n
+    \   return(await filednsoperator.update_dnsrecords(spec, old, new, name, namespace,
+    logger, diff, **_))\n\n@kopf.on.delete('dnsrecords')\nasync def delete_dnsrecords(spec,
+    name, namespace, logger,bypass_rollout=False, **kwargs):\n  provider = get_provider(namespace,spec.get('dnsServerRef'))\n
+    \ if provider == \"corednsFiles\":\n    return(await filednsoperator.delete_dnsrecords(spec,
+    name, namespace, logger,bypass_rollout=False, **kwargs))\n\n#config.load_kube_config()
+    \ # for local environment\n#config.load_incluster_config()  "
+  filednsoperator.py: "\nfrom jinja2 import Environment, FileSystemLoader\nfrom kubernetes
     import client, config\nfrom kubernetes.client.rest import ApiException\nimport
     datetime\nimport kopf\nimport yaml\nimport json\nimport os, time\nimport re\nimport
-    random\nimport asyncio\nimport logging\n\ndef genDNSDeployment(name,namespace,zonelist,replicas):\n
+    random\nimport logging\nimport asyncio\n\ndef genDNSDeployment(name,namespace,zonelist,replicas):\n
     \ file_path = os.path.dirname(os.path.realpath(__file__)) + \"/templates\"\n  environment
     = Environment(loader=FileSystemLoader(file_path))\n  template = environment.get_template(\"deployment.j2\")\n
     \ body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist,replicas=replicas)\n
@@ -19,7 +45,7 @@ data:
     \ file_path = os.path.dirname(os.path.realpath(__file__)) + \"/templates\"\n  environment
     = Environment(loader=FileSystemLoader(file_path))\n  template = environment.get_template(\"service-udp.j2\")\n
     \ body = template.render(name=name.replace('.','-'),namespace=namespace,lbtype=lbtype)\n
-    \ return(yaml.safe_load(body))\n\n\nasync def rolloutDeployment (deployment,namespace,timeout,logger):\n
+    \ return(yaml.safe_load(body))\n\nasync def rolloutDeployment (deployment,namespace,timeout,logger):\n
     \ now = datetime.datetime.utcnow()\n  now = str(now.isoformat(\"T\") + \"Z\")\n
     \ body = {\n      'spec': {\n          'template':{\n              'metadata':
     {\n                  'annotations': {\n                      'kubectl.kubernetes.io/restartedAt':
@@ -36,22 +62,18 @@ data:
     waiting...')\n    raise RuntimeError(f'Waiting timeout for deployment {deployment}')\n
     \ except ApiException as e:\n      e=str(e).replace('\\n','\\\\n')\n      error_msg=f'{{\"error\":
     {e}}}'\n      logger.error(\"Exception when calling rolloutDeployment: %s\\n\"
-    % error_msg)\n\n#https://kopf.readthedocs.io/en/stable/peering/?highlight=wait#multi-pod-operators\n@kopf.on.startup()\ndef
-    configure(settings: kopf.OperatorSettings, **_):\n    settings.peering.priority
-    = random.randint(0, 32767) \n    settings.peering.stealth = True\n    settings.peering.standalone
-    = False\n    settings.posting.level = logging.INFO\n\n@kopf.on.create('dnsservers')\nasync
-    def create_dnsservers(spec, name, namespace, logger, **kwargs):\n  deployment
-    = genDNSDeployment(name,namespace,spec.get('zones'),spec.get('replicas'))\n  configmap
-    = genDNSConfigmap(name,namespace,spec.get('zones'))\n  service_tcp = genDNSTCPService(name,namespace,'LoadBalancer')\n
-    \ service_udp = genDNSUDPService(name,namespace,'LoadBalancer')\n  try:\n    v1_core
-    = client.CoreV1Api()\n    v1_apps = client.AppsV1Api()\n    # Make unnecesary
-    to manage deletion\n    kopf.adopt(deployment)\n    kopf.adopt(configmap)\n    kopf.adopt(service_tcp)\n
-    \   kopf.adopt(service_udp)\n    v1_apps.create_namespaced_deployment(namespace,deployment,pretty='true')\n
+    % error_msg)\n\nasync def create_dnsservers(spec, name, namespace, logger, **kwargs):\n
+    \ deployment = genDNSDeployment(name,namespace,spec.get('zones'),spec.get('replicas'))\n
+    \ configmap = genDNSConfigmap(name,namespace,spec.get('zones'))\n  service_tcp
+    = genDNSTCPService(name,namespace,'LoadBalancer')\n  service_udp = genDNSUDPService(name,namespace,'LoadBalancer')\n
+    \ try:\n    v1_core = client.CoreV1Api()\n    v1_apps = client.AppsV1Api()\n    #
+    Make unnecesary to manage deletion\n    kopf.adopt(deployment)\n    kopf.adopt(configmap)\n
+    \   kopf.adopt(service_tcp)\n    kopf.adopt(service_udp)\n    v1_apps.create_namespaced_deployment(namespace,deployment,pretty='true')\n
     \   v1_core.create_namespaced_config_map(namespace,configmap,pretty='true')\n
     \   v1_core.create_namespaced_service(namespace,service_tcp,pretty='true')\n    v1_core.create_namespaced_service(namespace,service_udp,pretty='true')\n
-    \   await asyncio.sleep(1.0)\n  except ApiException as e:\n      e=str(e).replace('\\n','\\\\n')\n
+    \   await asyncio.sleep(2.0)\n  except ApiException as e:\n      e=str(e).replace('\\n','\\\\n')\n
     \     error_msg=f'{{\"error\": {e}}}'\n      logger.error(\"Exception when calling
-    create_dnsServer: %s\\n\" % error_msg)\n  return {'dsnserver-name': name}\n\n\n@kopf.on.create('dnsrecords')\nasync
+    create_dnsServer: %s\\n\" % error_msg)\n  return {'dsnserver-name': name}\n\nasync
     def create_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, **kwargs):\n
     \ try:\n    # Get some contextual data\n    zone=spec.get('zone')\n    dnsServerRef=spec.get('dnsServerRef')\n
     \   recordType=spec.get('recordType')\n    recordKey=spec.get('recordKey')\n    recordValue=spec.get('recordValue')\n
@@ -71,13 +93,12 @@ data:
     \   now = datetime.datetime.utcnow()\n    return json.dumps({'last_event': now},default=str)\n
     \ except ApiException as e:\n    e=str(e).replace('\\n','\\\\n')\n    error_msg=f'{{\"error\":
     {e}}}'\n    logger.error(\"Exception when calling create_dnsrecords: %s\\n\" %
-    error_msg)\n\n@kopf.on.update('dnsrecords')\nasync def update_dnsrecords(spec,
-    old, new, name, namespace, logger, diff, **_):\n  # Delete and create it\n  await
-    delete_dnsrecords(old.get('spec'),name,namespace,logger,bypass_rollout=True)\n
+    error_msg)\n\nasync def update_dnsrecords(spec, old, new, name, namespace, logger,
+    diff, **_):\n  # Delete and create it\n  await delete_dnsrecords(old.get('spec'),name,namespace,logger,bypass_rollout=True)\n
     \ await create_dnsrecords(new.get('spec'),name,namespace,logger)\n  now = datetime.datetime.utcnow()\n
-    \ return json.dumps({'last_event': now},default=str)\n\n@kopf.on.delete('dnsrecords')\nasync
-    def delete_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, **kwargs):\n
-    \ try:\n    # Get some contextual data\n    zone=spec.get('zone')\n    dnsServerRef=spec.get('dnsServerRef')\n
+    \ return json.dumps({'last_event': now},default=str)\n\nasync def delete_dnsrecords(spec,
+    name, namespace, logger,bypass_rollout=False, **kwargs):\n  try:\n    # Get some
+    contextual data\n    zone=spec.get('zone')\n    dnsServerRef=spec.get('dnsServerRef')\n
     \   recordType=spec.get('recordType')\n    recordKey=spec.get('recordKey')\n    recordValue=spec.get('recordValue')\n
     \   configMapName=f'dns-operator-{dnsServerRef}'.replace('.','-')\n    zoneName=f'db.{zone}'\n
     \   v1_core = client.CoreV1Api()\n    currentConfigMap = v1_core.read_namespaced_config_map(namespace=namespace,name=configMapName)\n
@@ -92,8 +113,7 @@ data:
     not exists, ignoring delete')\n    now = datetime.datetime.utcnow()\n    return
     json.dumps({'last_event': now},default=str)\n  except ApiException as e:\n    e=str(e).replace('\\n','\\\\n')\n
     \   error_msg=f'{{\"error\": {e}}}'\n    logger.error(\"Exception when calling
-    replaceConfigMap: %s\\n\" % error_msg)\n\n#config.load_kube_config()  # for local
-    environment\n#config.load_incluster_config()  \n"
+    replaceConfigMap: %s\\n\" % error_msg)\n"
 kind: ConfigMap
 metadata:
   creationTimestamp: null
