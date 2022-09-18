@@ -1,0 +1,12 @@
+---
+apiVersion: davidp1404.github.com/v1
+kind: dnsRecord
+metadata:
+  name: record8
+  namespace: default
+spec:
+  dnsServerRef: sample.org
+  recordType: PTR
+  zone: 1.0.0.0.0.0.0.0.0.0.f.7.2.0.0.2.ip6.arpa
+  recordKey: "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0"
+  recordValue: ["record8.sample.org."]

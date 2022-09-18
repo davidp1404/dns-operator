@@ -19,11 +19,13 @@ def genDNSDeployment(name,namespace,zonelist,replicas):
   body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist,replicas=replicas)
   return(yaml.safe_load(body))    
 
-def genDNSConfigmap(name,namespace,zonelist):
+def genDNSConfigmap(name,namespace,zonelist,nslist):
   file_path = os.path.dirname(os.path.realpath(__file__)) + "/templates"
   environment = Environment(loader=FileSystemLoader(file_path))
   template = environment.get_template("configmap.j2")
-  body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist)
+  body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist,nslist=nslist)
+  # remove empty lines
+  body=re.sub(r'\n\s*\n','\n',body,re.MULTILINE)
   return(yaml.safe_load(body))
 
 def genDNSTCPService(name,namespace,lbtype):
@@ -80,7 +82,7 @@ async def rolloutDeployment (deployment,namespace,timeout,logger):
 
 async def create_dnsservers(spec, name, namespace, logger, **kwargs):
   deployment = genDNSDeployment(name,namespace,spec.get('zones'),spec.get('replicas'))
-  configmap = genDNSConfigmap(name,namespace,spec.get('zones'))
+  configmap = genDNSConfigmap(name,namespace,spec.get('zones'),spec.get('nsRecords'))
   service_tcp = genDNSTCPService(name,namespace,'LoadBalancer')
   service_udp = genDNSUDPService(name,namespace,'LoadBalancer')
   try:
@@ -100,7 +102,8 @@ async def create_dnsservers(spec, name, namespace, logger, **kwargs):
       e=str(e).replace('\n','\\n')
       error_msg=f'{{"error": {e}}}'
       logger.error("Exception when calling create_dnsServer: %s\n" % error_msg)
-  return {'dsnserver-name': name}
+  now = datetime.datetime.utcnow()
+  return json.dumps({'last_event': now},default=str)
 
 async def create_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, **kwargs):
   try:
@@ -125,6 +128,8 @@ async def create_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, 
     for item in recordValue:
       newZoneValue+=f'{recordKey} IN {recordType} {item}\n' 
       logger.info(f'Adding Record "{recordKey} IN {recordType} {item}')
+    # remove empty lines
+    #newZoneValue=re.sub(r'\n\s*\n','\n',newZoneValue,re.MULTILINE)
     newZoneValue = newZoneValue.replace('\n','\\n')
     patch_body=yaml.safe_load(f'[{{ "op": "replace", "path": "/data/db.{zone}", "value": "{newZoneValue}"}}]')
     v1_core.patch_namespaced_config_map(configMapName,namespace,patch_body,pretty='true')

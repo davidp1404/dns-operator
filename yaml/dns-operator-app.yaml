@@ -33,10 +33,11 @@ data:
     \ file_path = os.path.dirname(os.path.realpath(__file__)) + \"/templates\"\n  environment
     = Environment(loader=FileSystemLoader(file_path))\n  template = environment.get_template(\"deployment.j2\")\n
     \ body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist,replicas=replicas)\n
-    \ return(yaml.safe_load(body))    \n\ndef genDNSConfigmap(name,namespace,zonelist):\n
+    \ return(yaml.safe_load(body))    \n\ndef genDNSConfigmap(name,namespace,zonelist,nslist):\n
     \ file_path = os.path.dirname(os.path.realpath(__file__)) + \"/templates\"\n  environment
     = Environment(loader=FileSystemLoader(file_path))\n  template = environment.get_template(\"configmap.j2\")\n
-    \ body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist)\n
+    \ body = template.render(name=name.replace('.','-'),namespace=namespace,zonelist=zonelist,nslist=nslist)\n
+    \ # remove empty lines\n  body=re.sub(r'\\n\\s*\\n','\\n',body,re.MULTILINE)\n
     \ return(yaml.safe_load(body))\n\ndef genDNSTCPService(name,namespace,lbtype):\n
     \ file_path = os.path.dirname(os.path.realpath(__file__)) + \"/templates\"\n  environment
     = Environment(loader=FileSystemLoader(file_path))\n  template = environment.get_template(\"service-tcp.j2\")\n
@@ -64,18 +65,20 @@ data:
     {e}}}'\n      logger.error(\"Exception when calling rolloutDeployment: %s\\n\"
     % error_msg)\n\nasync def create_dnsservers(spec, name, namespace, logger, **kwargs):\n
     \ deployment = genDNSDeployment(name,namespace,spec.get('zones'),spec.get('replicas'))\n
-    \ configmap = genDNSConfigmap(name,namespace,spec.get('zones'))\n  service_tcp
-    = genDNSTCPService(name,namespace,'LoadBalancer')\n  service_udp = genDNSUDPService(name,namespace,'LoadBalancer')\n
-    \ try:\n    v1_core = client.CoreV1Api()\n    v1_apps = client.AppsV1Api()\n    #
-    Make unnecesary to manage deletion\n    kopf.adopt(deployment)\n    kopf.adopt(configmap)\n
-    \   kopf.adopt(service_tcp)\n    kopf.adopt(service_udp)\n    v1_apps.create_namespaced_deployment(namespace,deployment,pretty='true')\n
+    \ configmap = genDNSConfigmap(name,namespace,spec.get('zones'),spec.get('nsRecords'))\n
+    \ service_tcp = genDNSTCPService(name,namespace,'LoadBalancer')\n  service_udp
+    = genDNSUDPService(name,namespace,'LoadBalancer')\n  try:\n    v1_core = client.CoreV1Api()\n
+    \   v1_apps = client.AppsV1Api()\n    # Make unnecesary to manage deletion\n    kopf.adopt(deployment)\n
+    \   kopf.adopt(configmap)\n    kopf.adopt(service_tcp)\n    kopf.adopt(service_udp)\n
+    \   v1_apps.create_namespaced_deployment(namespace,deployment,pretty='true')\n
     \   v1_core.create_namespaced_config_map(namespace,configmap,pretty='true')\n
     \   v1_core.create_namespaced_service(namespace,service_tcp,pretty='true')\n    v1_core.create_namespaced_service(namespace,service_udp,pretty='true')\n
     \   await asyncio.sleep(2.0)\n  except ApiException as e:\n      e=str(e).replace('\\n','\\\\n')\n
     \     error_msg=f'{{\"error\": {e}}}'\n      logger.error(\"Exception when calling
-    create_dnsServer: %s\\n\" % error_msg)\n  return {'dsnserver-name': name}\n\nasync
-    def create_dnsrecords(spec, name, namespace, logger,bypass_rollout=False, **kwargs):\n
-    \ try:\n    # Get some contextual data\n    zone=spec.get('zone')\n    dnsServerRef=spec.get('dnsServerRef')\n
+    create_dnsServer: %s\\n\" % error_msg)\n  now = datetime.datetime.utcnow()\n  return
+    json.dumps({'last_event': now},default=str)\n\nasync def create_dnsrecords(spec,
+    name, namespace, logger,bypass_rollout=False, **kwargs):\n  try:\n    # Get some
+    contextual data\n    zone=spec.get('zone')\n    dnsServerRef=spec.get('dnsServerRef')\n
     \   recordType=spec.get('recordType')\n    recordKey=spec.get('recordKey')\n    recordValue=spec.get('recordValue')\n
     \   configMapName=f'dns-operator-{dnsServerRef}'.replace('.','-')\n    zoneName=f'db.{zone}'\n
     \   v1_core = client.CoreV1Api()\n    currentConfigMap = v1_core.read_namespaced_config_map(namespace=namespace,name=configMapName)\n
@@ -86,9 +89,10 @@ data:
     \     currentZoneValue=re.sub(f'{recordKey} IN {recordType} .*(?:\\n|$)','',currentZoneValue)\n
     \   # Add it\n    newZoneValue=currentZoneValue\n    for item in recordValue:\n
     \     newZoneValue+=f'{recordKey} IN {recordType} {item}\\n' \n      logger.info(f'Adding
-    Record \"{recordKey} IN {recordType} {item}')\n    newZoneValue = newZoneValue.replace('\\n','\\\\n')\n
-    \   patch_body=yaml.safe_load(f'[{{ \"op\": \"replace\", \"path\": \"/data/db.{zone}\",
-    \"value\": \"{newZoneValue}\"}}]')\n    v1_core.patch_namespaced_config_map(configMapName,namespace,patch_body,pretty='true')\n
+    Record \"{recordKey} IN {recordType} {item}')\n    # remove empty lines\n    #newZoneValue=re.sub(r'\\n\\s*\\n','\\n',newZoneValue,re.MULTILINE)\n
+    \   newZoneValue = newZoneValue.replace('\\n','\\\\n')\n    patch_body=yaml.safe_load(f'[{{
+    \"op\": \"replace\", \"path\": \"/data/db.{zone}\", \"value\": \"{newZoneValue}\"}}]')\n
+    \   v1_core.patch_namespaced_config_map(configMapName,namespace,patch_body,pretty='true')\n
     \   if not bypass_rollout:\n        await rolloutDeployment (f'dns-operator-{dnsServerRef}'.replace('.','-'),namespace,60,logger)\n
     \   now = datetime.datetime.utcnow()\n    return json.dumps({'last_event': now},default=str)\n
     \ except ApiException as e:\n    e=str(e).replace('\\n','\\\\n')\n    error_msg=f'{{\"error\":

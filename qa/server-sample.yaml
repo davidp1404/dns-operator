@@ -9,5 +9,9 @@ spec:
   zones: 
   - sample.org
   - 0.0.10.in-addr.arpa
-#  replicas: 2
+  - 1.0.0.0.0.0.0.0.0.0.f.7.2.0.0.2.ip6.arpa # Rev 2002:7f00:0:1::
+  replicas: 2
+  nsRecords:
+  - ns1.sample.org.
+  - ns2.sample.org.
 

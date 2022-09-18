@@ -41,8 +41,8 @@ spec:
                   items:
                     type: string
                   default:
-                  - "3600 IN NS a.iana-servers.net."
-                  - "3600 IN NS b.iana-servers.net."
+                  - "a.iana-servers.net."
+                  - "b.iana-servers.net."
               required:
                 - zones
             status:
@@ -104,6 +104,7 @@ spec:
                   type: string
                   enum:
                   - A
+                  - AAAA
                   - PTR
                   - CNAME
                 zone:

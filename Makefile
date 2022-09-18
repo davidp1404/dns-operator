@@ -33,4 +33,15 @@ install-qasamples:
 uninstall-qasamples:
 	cat qa/{server,record}*.yaml | kubectl -n default delete -f -
 
+validate:
+	@(dig +short @172.18.255.201 record1.sample.org | grep "10.0.0.1" > /dev/null && echo "record1: ok" || echo "record1: fail")
+	@(dig +short @172.18.255.201 record2.sample.org | sort | grep -Pzo -e "10.0.0.1\n10.0.0.3" > /dev/null && echo "record2: ok" || echo "record2: fail") 
+	@(dig +short @172.18.255.201 -x 10.0.0.3 | grep "record3.sample.org." > /dev/null && echo "record3: ok" || echo "record3: fail") 
+	@(dig +short @172.18.255.201 -x 10.0.0.4 | grep "record4.sample.org." > /dev/null && echo "record4: ok" || echo "record4: fail") 
+	@(dig +short @172.18.255.201 -x 10.0.0.5 | grep "record5.sample.org." > /dev/null && echo "record5: ok" || echo "record5: fail")
+	@(dig +short @172.18.255.201 record6.sample.org | sort | grep -Pzo -e "10.0.0.1\nrecord1.sample.org." > /dev/null && echo "record6: ok" || echo "record6: fail")
+	@(dig +short @172.18.255.201 aaaa record7.sample.org grep "2002:7f00:0:1::1" > /dev/null && echo "record7: ok" || echo "record7: fail")
+	@(dig +short @172.18.255.201 -x 2002:7f00:0:1::1 | grep "record8.sample.org." > /dev/null && echo "record8: ok" || echo "record8: fail")
 
+stress:
+	@while true;do for r in {2..8};do kubectl delete -f qa/record$${r}.yaml;done;for r in {2..8};do kubectl create -f qa/record$${r}.yaml;done;done
