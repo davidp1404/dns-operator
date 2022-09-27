@@ -149,6 +149,7 @@ Limitations:
 - [x] Makefile to create docker images and install
 - [x] Operator with multiple replicas 
 - [x] Package with kustomize
+- [x] Enable ipv6
 - [ ] Enable managing of optional forward directives (currently only resolve for authoritative zones)
 - [ ] Reload all present records after recreating a dns instance
 - [ ] Improving QA tests (pytest)
