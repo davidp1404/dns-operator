@@ -153,6 +153,6 @@ Limitations:
 - [ ] Reload all present records after recreating a dns instance
 - [ ] Improving QA tests (pytest)
 - [ ] Package with helm
-- [ ] Refactor with python classes to encapsulate multiple backend providers.
+- [x] Refactor with python modules to encapsulate multiple backend providers.
 - [ ] Add support to manage cloud dns services (route53/AWS, Azure DNS, Google Cloud DNS)
 
