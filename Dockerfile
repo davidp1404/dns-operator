@@ -7,4 +7,4 @@ COPY requirements.txt /app
 WORKDIR /app
 RUN pip install -r requirements.txt
 USER dns-operator
-CMD kopf run -A /app/dns-operator.py 
+CMD kopf run -A --peering=dns-operator /app/dns-operator.py 

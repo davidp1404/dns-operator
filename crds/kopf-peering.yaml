@@ -48,10 +48,10 @@ spec:
 apiVersion: kopf.dev/v1
 kind: ClusterKopfPeering
 metadata:
-  name: default
+ name: dns-operator
 ---
-# apiVersion: kopf.dev/v1
-# kind: KopfPeering
-# metadata:
-#   namespace: dns-operator
-#   name: default
+#  apiVersion: kopf.dev/v1
+#  kind: KopfPeering
+#  metadata:
+#    namespace: dns-operator
+#    name: default

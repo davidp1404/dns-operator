@@ -1,13 +1,11 @@
 apiVersion: v1
 data:
-  dns-operator.py: "import kopf, logging, random\nimport asyncio\n# import yaml\n#
-    import json\n# import os, time\n# import re\n# from jinja2 import Environment,
-    FileSystemLoader\nfrom kubernetes import client, config\nfrom kubernetes.client.rest
-    import ApiException\n# import datetime\n\n\nimport filednsoperator as filednsoperator\n\ndef
-    get_provider(namespace,dnsname):\n  v1 = client.CustomObjectsApi()\n  try:\n    instance
-    = v1.get_namespaced_custom_object(group=\"davidp1404.github.com\", version=\"v1\",
-    plural=\"dnsservers\",namespace=namespace,name=dnsname)\n    return instance['spec']['provider']\n
-    \ except ApiException as e:\n    return \"\"\n\n#https://kopf.readthedocs.io/en/stable/peering/?highlight=wait#multi-pod-operators\n@kopf.on.startup()\ndef
+  dns-operator.py: "import kopf, logging, random\nimport asyncio\nfrom kubernetes
+    import client, config\nfrom kubernetes.client.rest import ApiException\n\nimport
+    filednsoperator as filednsoperator\n\ndef get_provider(namespace,dnsname):\n  v1
+    = client.CustomObjectsApi()\n  try:\n    instance = v1.get_namespaced_custom_object(group=\"davidp1404.github.com\",
+    version=\"v1\", plural=\"dnsservers\",namespace=namespace,name=dnsname)\n    return
+    instance['spec']['provider']\n  except ApiException as e:\n    return \"\"\n\n#https://kopf.readthedocs.io/en/stable/peering/?highlight=wait#multi-pod-operators\n@kopf.on.startup()\ndef
     configure(settings: kopf.OperatorSettings, **_):\n    settings.peering.priority
     = random.randint(0, 32767) \n    settings.peering.stealth = True\n    settings.peering.standalone
     = False\n    settings.posting.level = logging.INFO\n\n@kopf.on.create('dnsservers')\nasync

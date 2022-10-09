@@ -25,6 +25,7 @@ spec:
                   type: string
                   enum:
                   - corednsFiles
+                  - azure
                   default: corednsFiles
                 zones:
                   type: array
