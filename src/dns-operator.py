@@ -1,14 +1,7 @@
 import kopf, logging, random
 import asyncio
-# import yaml
-# import json
-# import os, time
-# import re
-# from jinja2 import Environment, FileSystemLoader
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-# import datetime
-
 
 import filednsoperator as filednsoperator
 
