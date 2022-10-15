@@ -15,6 +15,7 @@ spec:
       storage: true
       schema:
         openAPIV3Schema:
+          description: "Provide a way to define a DNS instance"
           type: object
           properties:
             spec:
@@ -95,6 +96,7 @@ spec:
       storage: true
       schema:
         openAPIV3Schema:
+          description: "Provide a way to describe DNS records"
           type: object
           properties:
             spec:
@@ -102,6 +104,7 @@ spec:
               x-kubernetes-preserve-unknown-fields: true
               properties:
                 recordType:
+                  description: "Define the record type from A, AAAA, PTR or CNAME"
                   type: string
                   enum:
                   - A
@@ -109,21 +112,47 @@ spec:
                   - PTR
                   - CNAME
                 zone:
+                  description: "Refer to one of the zones listed in <dnss>.spec.zones that owns the record"
                   type: string
-                recordKey:
-                  type: string
-                recordValue:
-                  type: array
-                  minItems: 1
-                  items:
-                    type: string
                 ttl:
+                  description: "Default value of 5, allowed [5,3600], seconds the record is valid in resolver"
                   type: integer
                   minimum: 5
                   maximum: 3600
                   default: 5
                 dnsServerRef:
+                  description: "Refer to <dnss>.metadata.name that owns the record"
                   type: string
+                recordKey:
+                  description: "For the record type chosen the fist field, it could be a <hostname> for a A, AAA, CNAME records or an IP octect for a PTR record"
+                  type: string
+                recordValue:
+                  description: "For the record type chosen the value field, it could be a ipv4 for A records, an ipv6 for AAAA records, or an <full_qualified_hostname> ending with '.' for CNAME records"
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+              oneOf:
+              # Types A or AAAA
+              - properties:
+                  recordType:
+                    pattern: "A"
+                  recordValue:
+                    items:
+                      format: ipv4
+              - properties:
+                  recordType:
+                    pattern: "AAAA"
+                  recordValue:
+                    items:
+                      format: ipv6         
+              # Types CNAME and PTR
+              - properties:
+                  recordType:
+                    pattern: "CNAME|PTR"
+                  recordValue:
+                    items:
+                      pattern: "\\.$"
               required:
                 - recordType
                 - recordKey
