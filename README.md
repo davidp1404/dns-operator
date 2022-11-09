@@ -1,6 +1,6 @@
 # dns-operator
 Kubernetes DNS operator based on coredns and developed with python3 using [kubernetes](https://github.com/kubernetes-client/python) and [kopf](https://kopf.readthedocs.io/en/stable/) libraries.     
-Currently it only supports coredns files (a configmap) as the backing storage using jinja2 templates to render config files. It could be easily adpated to use other backends due to the flexibility of coredns, being straightforward to connect with public cloud DNS services. 
+Currently it only supports coredns files (a configmap) as the backing storage using jinja2 templates to render config files. It could be easily adapted to use other backends due to the flexibility of coredns, being straightforward to connect with public cloud DNS services. 
 ## What it does?
 Extend kubernetes api with new CRDs to allow you:
 1) Manage DNS instances (create/delete):
