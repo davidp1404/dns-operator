@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dns-operator-{{name}}
+  namespace: {{namespace}}
+  labels:
+    app.kubernetes.io/managed-by: "dns-operator"
+    app: dns-operator-{{name}}
+data:
+  Corefile: |
+    .:1053 {
+      root /etc/coredns
+      errors
+      health
+      ready
+      loadbalance round_robin
+      prometheus :9153
+      reload 2s 1s
+      log
+      {% for zone in zonelist -%}
+      file db.{{zone}} {{zone}}
+      {% endfor -%}
+    }
+  {% for zone in zonelist -%}
+  db.{{zone}}: |
+    $ORIGIN {{zone}}.
+    @   3600 IN SOA sns.dns.icann.org. noc.dns.icann.org. (
+            2017042761 ; serial
+            7200       ; refresh (2 hours)
+            3600       ; retry (1 hour)
+            1209600    ; expire (2 weeks)
+            3600       ; minimum (1 hour)
+            )
+        {% for ns in nslist -%}
+        3600 IN NS {{ns}}
+        {% endfor %}  
+    $TTL 5
+  {% endfor %}

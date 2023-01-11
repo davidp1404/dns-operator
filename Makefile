@@ -15,6 +15,8 @@ yaml-stanzas:
 install-crds:
 	kubectl apply -f crds/dns-operator-crds.yaml
 	kubectl apply -f crds/kopf-peering.yaml
+	@sleep 2
+	kubectl apply -f crds/kopf-peering-id.yaml
 
 uninstall-crds:
 	-@read -n1 -p "Delete all dnss and dnsr to avoid orphans? (ctrl+c to stop)" && kubectl delete dnss,dnsr -A --all 

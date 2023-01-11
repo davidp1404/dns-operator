@@ -18,8 +18,8 @@ spec:
       terminationGracePeriodSeconds: 5
       containers:
       - name: main
-        image: davidp1404/dns-operator
-        imagePullPolicy: IfNotPresent
+        image: davidp1404/dns-operator:latest
+        imagePullPolicy: Always
         securityContext:
           runAsUser: 1000 
         resources:

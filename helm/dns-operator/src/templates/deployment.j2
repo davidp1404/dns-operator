@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  dns-operator-{{name}}
+  namespace: {{namespace}}
+  labels:
+    app: dns-operator-{{name}}
+    app.kubernetes.io/managed-by: "dns-operator"
+spec:
+  selector:
+    matchLabels:
+      app: dns-operator-{{name}}
+  revisionHistoryLimit: 10
+  replicas: {{replicas}}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 50%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dns-operator-{{name}}
+        app.kubernetes.io/managed-by: "dns-operator"
+    spec:
+      containers:
+      - name:  main
+        image: k8s.gcr.io/coredns/coredns:v1.8.4
+        args:
+        - -dns.port
+        - "1053"
+        - -conf
+        - /etc/coredns/Corefile
+        resources:
+          requests:
+            cpu: 250m
+            memory: 250Mi
+          limits:
+            cpu: 250m
+            memory: 250Mi
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: 8181
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        ports:
+        - containerPort: 1053
+          name: dns
+          protocol: UDP
+        - containerPort: 1053
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 9153
+          name: metrics
+          protocol: TCP
+        securityContext:
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /etc/coredns
+          name: config-volume
+          readOnly: true
+      restartPolicy: Always
+      volumes:
+      - name: config-volume
+        configMap:
+          name: dns-operator-{{name}}
+          items:
+          - key: Corefile
+            path: Corefile
+          {% for zone in zonelist -%}
+          - key: db.{{zone}}
+            path: db.{{zone}}
+          {% endfor %}

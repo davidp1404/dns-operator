@@ -1,0 +1,60 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: davidp1404-dns-operator-cr
+rules:
+# dns-operator: manipulate deployments, configmap and custom CRDs
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - events
+  - services
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - deployments/status
+  verbs:
+  - '*'
+- apiGroups:
+  - davidp1404.github.com
+  resources:
+  - dnsservers
+  - dnsrecords
+  verbs:
+  - '*'
+# Kopf framework: knowing which other operators are running (i.e. peering).
+- apiGroups: [kopf.dev]
+  resources: [clusterkopfpeerings]
+  verbs: [list, watch, patch, get]
+
+# Kopf framework: runtime observation of namespaces & CRDs (addition/deletion).
+- apiGroups: [apiextensions.k8s.io]
+  resources: [customresourcedefinitions]
+  verbs: [list, watch]
+- apiGroups: [""]
+  resources: [namespaces]
+  verbs: [list, watch]
+
+# Kopf framework: admission webhook configuration management.
+- apiGroups: [admissionregistration.k8s.io/v1, admissionregistration.k8s.io/v1beta1]
+  resources: [validatingwebhookconfigurations, mutatingwebhookconfigurations]
+  verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: davidp1404-dns-operator-crb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: davidp1404-dns-operator-cr
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.operator.name }}-sa
+  namespace: {{ .Values.operator.namespace }}

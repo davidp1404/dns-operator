@@ -1,0 +1,8 @@
+apiVersion: v2
+name: dns-operator
+description: https://github.com/davidp1404/dns-operator
+icon: https://avatars.githubusercontent.com/u/58428863?v=4
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

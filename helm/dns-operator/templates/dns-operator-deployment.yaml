@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.operator.name }}
+  namespace: {{ .Values.operator.namespace }}
+spec:
+  replicas: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ .Values.operator.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.operator.name }}
+    spec:
+      serviceAccountName: {{ .Values.operator.name }}-sa
+      terminationGracePeriodSeconds: 5
+      {{- if .Values.operator.image.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml $.Values.operator.image.imagePullSecrets | nindent 6 }}
+      {{- end }}
+      {{- with .Values.operator.affinity }}
+      affinity: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.operator.nodeSelector }}
+      nodeSelector: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with .Values.operator.tolerations }}
+      tolerations: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: main
+        image: "{{ .Values.operator.image.repository }}:{{ .Values.operator.image.tag }}" 
+        imagePullPolicy: {{ .Values.operator.image.pullPolicy }}
+        securityContext:
+          runAsUser: 1000 
+        resources: 
+          {{- toYaml $.Values.operator.resources | nindent 12 }}
+        volumeMounts:
+        - name: app
+          mountPath: /app/dns-operator.py
+          subPath: dns-operator.py
+        - name: app
+          mountPath: /app/filednsoperator.py
+          subPath: filednsoperator.py
+        - name: templates
+          mountPath: /app/templates
+      volumes:
+      - name: app
+        configMap:
+          name: dns-operator-app     
+      - name: templates
+        configMap:
+          name: dns-operator-templates
