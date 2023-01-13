@@ -82,9 +82,64 @@ $ cd dns-operator
 # Tune the docker-image defintion in the Makefile to reflect your scenario
 # Modify yaml/dns-operator-deployment.yaml file with the image url/tag chosen 
 # Ensure your kubeconfig/context grants you the privileges needed to create crds, clusterroles, clusterrolebindings, serviceaccounts, configmaps, deployments
+// Option 1 with kustomize:
 $ make docker-image
 $ make install-crd
 $ make install-operator
+
+// Option 2 with helm:
+$ helm show values https://github.com/davidp1404/dns-operator/blob/main/helm/dns-operator-0.1.0.tgz?raw=true
+# Default values for dns-operator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+operator:
+  name: dns-operator
+  namespace: dns-operator
+
+  image:
+  # You should provide your own as no public image is available
+    repository: "davidp1404/dns-operator"
+    pullPolicy: "IfNotPresent"
+    tag: "latest"
+    imagePullSecrets: []
+
+  resources:
+    limits:
+      cpu: 250m
+      memory: 250Mi
+    requests:
+     cpu: 250m
+     memory: 250Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: 
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - "dns-operator"
+        topologyKey: kubernetes.io/hostname
+$ cat <<EOF > values.yaml
+operator:
+  image:
+  # You should provide your own as no public image is available
+    repository: "davidp1404/dns-operator"
+    pullPolicy: "IfNotPresent"
+    tag: "latest"
+EOF
+
+$ helm install dns-operator \
+  https://github.com/davidp1404/dns-operator/blob/main/helm/dns-operator-0.1.0.tgz?raw=true \
+  -f values.yaml
+
+// Install QA samples (in default namespace)
 $ make install-qasamples
 ```
 By defatul the services were tuned for metal-lb, but you can adapt them to your specific use case editing the configmap with the jinja2 templates. 
