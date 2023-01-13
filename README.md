@@ -79,53 +79,22 @@ record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5    
 ```
 $ git clone --depth 1 --branch v1.0 https://github.com/davidp1404/dns-operator.git
 $ cd dns-operator
+```
+### Option 1 with kustomize:
+```
+$ cd dns-operator
 # Tune the docker-image defintion in the Makefile to reflect your scenario
 # Modify yaml/dns-operator-deployment.yaml file with the image url/tag chosen 
 # Ensure your kubeconfig/context grants you the privileges needed to create crds, clusterroles, clusterrolebindings, serviceaccounts, configmaps, deployments
-// Option 1 with kustomize:
 $ make docker-image
 $ make install-crd
 $ make install-operator
+```
 
-// Option 2 with helm:
-$ helm show values https://github.com/davidp1404/dns-operator/blob/main/helm/dns-operator-0.1.0.tgz?raw=true
-# Default values for dns-operator.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+### Option 2 with helm:
+```
+# Ensure your kubeconfig/context grants you the privileges needed to create crds, clusterroles, clusterrolebindings, serviceaccounts, configmaps, deployments
 
-operator:
-  name: dns-operator
-  namespace: dns-operator
-
-  image:
-  # You should provide your own as no public image is available
-    repository: "davidp1404/dns-operator"
-    pullPolicy: "IfNotPresent"
-    tag: "latest"
-    imagePullSecrets: []
-
-  resources:
-    limits:
-      cpu: 250m
-      memory: 250Mi
-    requests:
-     cpu: 250m
-     memory: 250Mi
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: 
-    podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchExpressions:
-          - key: app
-            operator: In
-            values:
-            - "dns-operator"
-        topologyKey: kubernetes.io/hostname
 $ cat <<EOF > values.yaml
 operator:
   image:
@@ -138,9 +107,35 @@ EOF
 $ helm install dns-operator \
   https://github.com/davidp1404/dns-operator/blob/main/helm/dns-operator-0.1.0.tgz?raw=true \
   -f values.yaml
+```
 
-// Install QA samples (in default namespace)
+### Install QA samples (in default namespace)
+```
 $ make install-qasamples
+$ kubectl -n default get dnss,dnsr
+NAME                                         PROVIDER       ZONES                                                                             REPLICAS   AGE
+dnsserver.davidp1404.github.com/sample.org   corednsFiles   ["sample.org","0.0.10.in-addr.arpa","1.0.0.0.0.0.0.0.0.0.f.7.2.0.0.2.ip6.arpa"]   2          10s
+
+NAME                                      ZONE                                       KEY                               TYPE    VALUE                     TTL   AGE
+dnsrecord.davidp1404.github.com/record1   sample.org                                 record1                           A       ["10.0.0.1"]              5     10s
+dnsrecord.davidp1404.github.com/record2   sample.org                                 record2                           A       ["10.0.0.1","10.0.0.3"]   5     10s
+dnsrecord.davidp1404.github.com/record3   0.0.10.in-addr.arpa                        3                                 PTR     ["record3.sample.org."]   5     10s
+dnsrecord.davidp1404.github.com/record4   0.0.10.in-addr.arpa                        4                                 PTR     ["record4.sample.org."]   5     10s
+dnsrecord.davidp1404.github.com/record5   0.0.10.in-addr.arpa                        5                                 PTR     ["record5.sample.org."]   5     10s
+dnsrecord.davidp1404.github.com/record6   sample.org                                 record6                           CNAME   ["record1.sample.org."]   5     10s
+dnsrecord.davidp1404.github.com/record7   sample.org                                 record7                           AAAA    ["2002:7f00:0:1::1"]      5     10s
+dnsrecord.davidp1404.github.com/record8   1.0.0.0.0.0.0.0.0.0.f.7.2.0.0.2.ip6.arpa   1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0   PTR     ["record8.sample.org."]   5     10s
+
+// Install jq if not present with "apt install jq"
+$ svcip=$(kubectl -n default get svc -l app=dns-operator-sample-org -o json | jq -r .items[0].status.loadBalancer.ingress[0].ip)
+$ dig +short record1.sample.org @$svcip
+10.0.0.1
+$ dig +short -x 10.0.0.3  @$svcip
+record3.sample.org.
+$ dig +short record7.sample.org AAAA @$svcip
+2002:7f00:0:1::1
+$ dig +short -x 2002:7f00:0:1::1 @$svcip
+record8.sample.org.
 ```
 By defatul the services were tuned for metal-lb, but you can adapt them to your specific use case editing the configmap with the jinja2 templates. 
 ```
@@ -189,9 +184,12 @@ spec:
 ```
 ## Uninstallation
 ```
-$ make uninstall-crd
-$ make uninstall-operator
-$ make uninstall-qasamples
+$ make uninstall-qasamples  # In all cases clean custom resources before removing the operator
+
+$ make uninstall-crd            # If you installed with kustomize option
+$ make uninstall-operator       # If you installed with kustomize option
+
+$ helm uninstall dns-operator   # If you installed with helm
 ```
 
 ## Status:
