@@ -77,7 +77,7 @@ record3   0.0.10.in-addr.arpa   3         PTR    ["record3.sample.org."]   5    
 ```
 ## Installation:
 ```
-$ git clone --depth 1 --branch v1.0 https://github.com/davidp1404/dns-operator.git
+$ git clone --depth 1 https://github.com/davidp1404/dns-operator.git
 $ cd dns-operator
 ```
 ### Option 1 with kustomize:
